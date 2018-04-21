@@ -49,14 +49,10 @@ angular.module('ui.dashboard')
         // from dashboard="options"
         scope.options = scope.$eval(attrs.dashboard);
 
-        // Deep options
-        scope.options.settingsModalOptions = scope.options.settingsModalOptions || {};
-        _.each(['settingsModalOptions'], function(key) {
-          // Ensure it exists on scope.options
-          scope.options[key] = scope.options[key] || {};
-          // Set defaults
-          _.defaults(scope.options[key], defaults[key]);
-        });
+        // Ensure settingsModalOptions exists on scope.options
+        scope.options.settingsModalOptions = scope.options.settingsModalOptions !== undefined ? scope.options.settingsModalOptions : {};
+        // Set defaults
+        _.defaults(scope.options.settingsModalOptions, defaults.settingsModalOptions);
 
         // Shallow options
         _.defaults(scope.options, defaults);
@@ -89,12 +85,8 @@ angular.module('ui.dashboard')
           scope.options.stringifyStorage
         );
 
-        /**
-         * Instantiates a new widget on the dashboard
-         * @param {Object} widgetToInstantiate The definition object of the widget to be instantiated
-         */
-        scope.addWidget = function (widgetToInstantiate, doNotSave) {
 
+        function getWidget(widgetToInstantiate) {
           if (typeof widgetToInstantiate === 'string') {
             widgetToInstantiate = {
               name: widgetToInstantiate
@@ -113,10 +105,34 @@ angular.module('ui.dashboard')
           }
 
           // Instantiation
-          var widget = new WidgetModel(defaultWidgetDefinition, widgetToInstantiate);
+          return new WidgetModel(defaultWidgetDefinition, widgetToInstantiate);
+        }
+
+
+        /**
+         * Instantiates a new widget and append it the dashboard
+         * @param {Object} widgetToInstantiate The definition object of the widget to be instantiated
+         */
+        scope.addWidget = function (widgetToInstantiate, doNotSave) {
+          var widget = getWidget(widgetToInstantiate);
 
           // Add to the widgets array
           scope.widgets.push(widget);
+          if (!doNotSave) {
+            scope.saveDashboard();
+          }
+
+          return widget;
+        };
+
+        /**
+         * Instantiates a new widget and insert it a beginning of dashboard
+         */
+        scope.prependWidget = function(widgetToInstantiate, doNotSave) {
+          var widget = getWidget(widgetToInstantiate);
+
+          // Add to the widgets array
+          scope.widgets.unshift(widget);
           if (!doNotSave) {
             scope.saveDashboard();
           }
@@ -203,14 +219,14 @@ angular.module('ui.dashboard')
          */
         scope.saveDashboard = function (force) {
           if (!scope.options.explicitSave) {
-            scope.dashboardState.save(scope.widgets);
+            return scope.dashboardState.save(scope.widgets);
           } else {
             if (!angular.isNumber(scope.options.unsavedChangeCount)) {
               scope.options.unsavedChangeCount = 0;
             }
             if (force) {
               scope.options.unsavedChangeCount = 0;
-              scope.dashboardState.save(scope.widgets);
+              return scope.dashboardState.save(scope.widgets);
 
             } else {
               ++scope.options.unsavedChangeCount;
@@ -223,9 +239,9 @@ angular.module('ui.dashboard')
          */
         scope.externalSaveDashboard = function(force) {
           if (angular.isDefined(force)) {
-            scope.saveDashboard(force);
+            return scope.saveDashboard(force);
           } else {
-            scope.saveDashboard(true);
+            return scope.saveDashboard(true);
           }
         };
 
@@ -278,12 +294,14 @@ angular.module('ui.dashboard')
         // expose functionality externally
         // functions are appended to the provided dashboard options
         scope.options.addWidget = scope.addWidget;
+        scope.options.prependWidget = scope.prependWidget;
         scope.options.loadWidgets = scope.loadWidgets;
         scope.options.saveDashboard = scope.externalSaveDashboard;
         scope.options.removeWidget = scope.removeWidget;
         scope.options.openWidgetSettings = scope.openWidgetSettings;
         scope.options.clear = scope.clear;
-        scope.options.resetWidgetsToDefault = scope.resetWidgetsToDefault
+        scope.options.resetWidgetsToDefault = scope.resetWidgetsToDefault;
+        scope.options.currentWidgets = scope.widgets;
 
         // save state
         scope.$on('widgetChanged', function (event) {

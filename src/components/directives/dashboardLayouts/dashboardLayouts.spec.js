@@ -276,6 +276,15 @@ describe('Directive: dashboard-layouts', function () {
       toFn();
     });
 
+    it('should exit editTitle when locked', function() {
+      var layout = {
+        id: '2',
+        locked: true
+      };
+      childScope.editTitle(layout);
+      expect(layout.editingTitle).toBeUndefined();
+    });
+
   });
 
   describe('the saveTitleEdit method', function() {
@@ -292,6 +301,17 @@ describe('Directive: dashboard-layouts', function () {
       childScope.saveTitleEdit(layout);
       expect(LayoutStorage.prototype.save).toHaveBeenCalled();
     });
+
+    it('should call event.preventDefault', function() {
+      var layout = { id: '1' };
+      var evt = {
+        preventDefault: function() {
+        }
+      };
+      spyOn(evt, 'preventDefault');
+      childScope.saveTitleEdit(layout, evt);
+      expect(evt.preventDefault).toHaveBeenCalled();
+    })
 
   });
 
@@ -319,11 +339,13 @@ describe('Directive: dashboard-layouts', function () {
         active: true,
         dashboard: {
           addWidget: function() {},
+          prependWidget: function() {},
           loadWidgets: function() {},
           saveDashboard: function() {}
         }
       };
       spyOn(mockDash.dashboard, 'addWidget');
+      spyOn(mockDash.dashboard, 'prependWidget');
       spyOn(mockDash.dashboard, 'loadWidgets');
       spyOn(mockDash.dashboard, 'saveDashboard');
       galSpy = spyOn(LayoutStorage.prototype, 'getActiveLayout').and;
@@ -344,6 +366,25 @@ describe('Directive: dashboard-layouts', function () {
         galSpy.returnValue(null);
         expect(function() {
           options.addWidget();
+        }).not.toThrow();
+      });
+
+    });
+
+    describe('the prependWidget method', function() {
+
+      it('should call dashboard.prependWidget method of the active layout', function() {
+        options.prependWidget(1,2,3);
+        expect(mockDash.dashboard.prependWidget).toHaveBeenCalled();
+        var firstCall = mockDash.dashboard.prependWidget.calls.first();
+        expect(firstCall.object).toEqual(mockDash.dashboard);
+        expect(firstCall.args).toEqual([1,2,3]);
+      });
+
+      it('should do nothing if there is no active layout', function() {
+        galSpy.returnValue(null);
+        expect(function() {
+          options.prependWidget();
         }).not.toThrow();
       });
 
@@ -383,6 +424,16 @@ describe('Directive: dashboard-layouts', function () {
         expect(function() {
           options.saveDashboard();
         }).not.toThrow();
+      });
+
+    });
+
+    describe('the sortableDefaults.stop function', function() {
+
+      it('should call saveLayouts', function() {
+        spyOn(childScope.options, 'saveLayouts').and.callThrough();
+        childScope.sortableOptions.stop();
+        expect(childScope.options.saveLayouts).toHaveBeenCalled();
       });
 
     });
